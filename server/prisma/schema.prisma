@@ -99,6 +99,7 @@ model deliveries {
   guest_meal_orders  guest_meal_orders[]
   route_logs         route_logs[]
   tiffin_events      tiffin_events[]
+  driver_id          String?
 
   @@unique([subscription_id, delivery_date, slot])
   @@index([delivery_date, status], map: "idx_deliveries_date_status")

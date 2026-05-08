@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { deliveryService } from '../services/delivery.service';
 import { validators } from '../utils/validators';
+import { getAssignedDeliveriesForDriver } from '../services/delivery.service';
 
 export const generateDeliveries = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -39,6 +40,41 @@ export const getDeliveryDetails = async (req: Request, res: Response): Promise<v
 // DRIVER FLOW CONTROLLERS
 // ==========================================
 
+// This controller is used by the driver to fetch their assigned deliveries for a specific date and slot. The service will handle the logic of grouping deliveries by address and slot.
+export const getDriverAssignedDeliveries = async (req: Request, res: Response) => {
+  try {
+    const driverId = (req as any).user?.id;
+
+    if (!driverId) {
+      return res.status(401).json({ success: false, message: 'UNAUTHORIZED' });
+    }
+
+    const { date, slot } = req.query;
+
+    if (!date || typeof date !== 'string') {
+      return res.status(400).json({ success: false, message: 'Date query parameter is required' });
+    }
+
+    const validSlot = slot === 'LUNCH' || slot === 'DINNER' ? slot : undefined;
+
+    const deliveries = await getAssignedDeliveriesForDriver(driverId, date, validSlot);
+
+    return res.status(200).json({
+      success: true,
+      data: deliveries,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    const statusCode = message === 'INVALID_DATE' ? 400 : 500;
+    
+    return res.status(statusCode).json({ 
+      success: false, 
+      message: message 
+    });
+  }
+};
+
+// This controller allows the driver to log their arrival at the delivery location, which is a critical step before marking a delivery as failed or completed. It ensures that the driver's location is securely logged for accountability.
 export const fetchDriverDeliveries = async (req: Request, res: Response): Promise<void> => {
   try {
     const driverId = req.user.id;

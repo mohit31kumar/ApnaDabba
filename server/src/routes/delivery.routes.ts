@@ -6,7 +6,8 @@ import {
   fetchDriverDeliveries,
   logDriverArrival,
   markDeliveryFailed,
-  markHandoverComplete
+  markHandoverComplete,
+  getDriverAssignedDeliveries
 } from '../controllers/delivery.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { requireRole, requireOwnership } from '../middlewares/rbac.middleware';
@@ -60,5 +61,7 @@ router.post('/:id/driver/deliver',
   requireRole('DELIVERY_BOY'), 
   markHandoverComplete
 );
+
+router.get('/driver/assigned', getDriverAssignedDeliveries);
 
 export default router;
