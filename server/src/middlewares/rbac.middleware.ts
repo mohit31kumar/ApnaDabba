@@ -56,7 +56,7 @@ export const requireOwnership = (model: string, idParam: string = 'id', ownerPat
         return;
       }
 
-      const resourceId = req.params[idParam];
+      const resourceId = req.params[idParam] as string;
       if (!resourceId) {
         res.status(400).json({
           success: false,

@@ -1,58 +1,67 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { Delivery, getDeliveryById, skipDelivery } from '../../../services/customer/delivery.service';
+import { Delivery, getDeliveryByDateSlot, skipDelivery } from '../../../services/customer/delivery.service';
 
 export default function DeliverySchedulePage() {
- const { activeSubscriptionId } = useAuthStore();
+  const { activeSubscriptionId } = useAuthStore();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<'LUNCH' | 'DINNER' | null>(null);
-  // Use ${date}_${slot} as key when integrating API
-  const [deliveryCache, setDeliveryCache] = useState<Record<string, Delivery>>({});;
+  const [deliveryCache, setDeliveryCache] = useState<Record<string, Delivery>>({});
   const [isFetchingDelivery, setIsFetchingDelivery] = useState<boolean>(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skipError, setSkipError] = useState<string | null>(null);
   const [skipSuccess, setSkipSuccess] = useState<boolean>(false);
   const [retryTrigger, setRetryTrigger] = useState(0);
   const [isSkipping, setIsSkipping] = useState<boolean>(false);
-  
+  const fetchedKeyRef = useRef<string | null>(null);
 
+  // Separate effect for clearing skip messages (not dependent on deliveryCache)
+  useEffect(() => {
+    if (!selectedDate || !selectedSlot) return;
+    setSkipError(null);
+    setSkipSuccess(false);
+  }, [selectedDate, selectedSlot]);
+
+  // Separate effect for fetching delivery
   useEffect(() => {
     if (!selectedDate || !selectedSlot) return;
 
-    setSkipError(null);
-    setSkipSuccess(false);
-
     const key = `${selectedDate}_${selectedSlot}`;
-    
-    // Guard prevents refetch loop when deliveryCache updates
-    if (deliveryCache[key]) {
-      return;
-    }
+
+    if (deliveryCache[key]) return;
+    if (fetchedKeyRef.current === key) return;
 
     const fetchDelivery = async () => {
       setIsFetchingDelivery(true);
       setFetchError(null);
-      
+      fetchedKeyRef.current = key;
+
       try {
-        const deliveryId = key; // temporary mapping
-        const fetchedDelivery = await getDeliveryById(deliveryId);
-        
+        const fetchedDelivery = await getDeliveryByDateSlot(selectedDate, selectedSlot);
         setDeliveryCache(prev => ({
           ...prev,
-          [key]: fetchedDelivery
+          [key]: fetchedDelivery,
         }));
       } catch (err: unknown) {
+        fetchedKeyRef.current = null;
         const message = err instanceof Error ? err.message : 'Failed to fetch delivery';
-        setFetchError(message);
+        if (message === 'NO_DELIVERY') {
+          setDeliveryCache(prev => ({
+            ...prev,
+            [key]: null as any,
+          }));
+        } else {
+          setFetchError(message);
+        }
       } finally {
         setIsFetchingDelivery(false);
       }
     };
 
     fetchDelivery();
-  }, [selectedDate, selectedSlot, deliveryCache, retryTrigger]);
+  }, [selectedDate, selectedSlot, retryTrigger]);
 
 
   // TODO: Replace with subscription.start_date and end_date

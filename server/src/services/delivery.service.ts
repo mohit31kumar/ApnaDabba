@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma";
 import { Prisma } from "@prisma/client";
+import { logger } from "../utils/logger";
 
 export const deliveryService = {
   // ==========================================
@@ -67,8 +68,11 @@ export const deliveryService = {
         });
         generatedCount++;
       } catch (err: any) {
-        if (err.code !== "P2002")
+        if (err.code === "P2002") {
+          logger.warn('Delivery already exists for this subscription/date/slot', { subscription_id: sub.id, slot, date: targetDate });
+        } else {
           errors.push({ sub_id: sub.id, error: err.message });
+        }
       }
     }
     return { generatedCount, errors };
@@ -165,9 +169,8 @@ export const deliveryService = {
         throw new Error("INVALID_STATE");
       }
 
-      // [FIX] ISSUE 4: Driver Ownership Check (Placeholder)
-      // logic to verify driver is assigned to this specific delivery/route
-      if (delivery.driver_id !== driverId) throw new Error("FORBIDDEN");
+      // [FIX] ISSUE 4: Driver Ownership Check
+      if (!delivery.driver_id || delivery.driver_id !== driverId) throw new Error("FORBIDDEN");
 
       await tx.route_logs.create({
         data: {
@@ -201,76 +204,61 @@ export const deliveryService = {
     lat: number,
     lng: number,
   ) => {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Fetch Entities
-      const delivery = await tx.deliveries.findUnique({
+    // Pre-transaction validations (status updates persist even on failure)
+    const preDelivery = await prisma.deliveries.findUnique({
+      where: { id: deliveryId },
+      include: { subscriptions: true },
+    });
+
+    if (!preDelivery) throw new Error("DELIVERY_NOT_FOUND");
+    if (preDelivery.status === "DELIVERED") throw new Error("ALREADY_PROCESSED");
+    if (preDelivery.status !== "PENDING" && preDelivery.status !== "DISPATCHED") throw new Error("INVALID_STATE");
+    if (!preDelivery.driver_id || preDelivery.driver_id !== driverId) throw new Error("FORBIDDEN");
+
+    const mealCost = preDelivery.subscriptions.price_per_meal_snapshot;
+    if (mealCost == null) throw new Error("INVALID_PRICE_CONFIGURATION");
+
+    // Tiffin debt check BEFORE transaction (so BLOCKED_TIFFIN_DEBT status persists)
+    const tracker = await prisma.tiffin_tracker.findUnique({
+      where: { subscription_id: preDelivery.subscription_id },
+    });
+    if (!tracker) throw new Error("DATA_INTEGRITY_ERROR");
+
+    if (tracker.tiffins_due >= 2) {
+      await prisma.deliveries.update({
         where: { id: deliveryId },
-        include: { subscriptions: true },
+        data: { status: "BLOCKED_TIFFIN_DEBT" },
       });
+      throw new Error("BLOCKED_TIFFIN_DEBT");
+    }
 
-      if (!delivery) throw new Error("DELIVERY_NOT_FOUND");
-      // [FIX] ISSUE 5: Idempotency Protection
-      if (delivery.status === "DELIVERED") {
-        throw new Error("ALREADY_PROCESSED");
-      }
+    // Wallet balance check
+    const wallet = await prisma.subscription_wallets.findUnique({
+      where: { subscription_id: preDelivery.subscription_id },
+    });
+    if (!wallet) throw new Error("DATA_INTEGRITY_ERROR");
+    if (wallet.balance < mealCost) throw new Error("INSUFFICIENT_BALANCE");
 
-      // [FIX] ISSUE 2: Delivery State Validation
-      if (delivery.status !== "PENDING" && delivery.status !== "DISPATCHED") {
-        throw new Error("INVALID_STATE");
-      }
+    // Tiffin box validation
+    const newTiffinBox = await prisma.tiffin_boxes.findUnique({
+      where: { id: tiffinBoxId },
+    });
+    if (!newTiffinBox) throw new Error("TIFFIN_NOT_FOUND");
+    if (newTiffinBox.status === "WITH_CUSTOMER")
+      throw new Error("TIFFIN_ALREADY_WITH_CUSTOMER");
 
-      // [FIX] ISSUE 4: Driver Ownership Check (Placeholder)
-      // TODO: Add logic to verify driver is assigned to this specific delivery/route
-      if (delivery.driver_id !== driverId) throw new Error("FORBIDDEN");
-
-      // [FIX] ISSUE 3: Tiffin Box Validation
-      const tracker = await tx.tiffin_tracker.findUnique({
-        where: { subscription_id: delivery.subscription_id },
+    if (returnedTiffinBoxId) {
+      const returnedTiffin = await prisma.tiffin_boxes.findUnique({
+        where: { id: returnedTiffinBoxId },
       });
+      if (!returnedTiffin) throw new Error("RETURNED_TIFFIN_NOT_FOUND");
+    }
 
-      const wallet = await tx.subscription_wallets.findUnique({
-        where: { subscription_id: delivery.subscription_id },
-      });
-
-      if (!tracker || !wallet) throw new Error("DATA_INTEGRITY_ERROR");
-
-      const mealCost = delivery.subscriptions.price_per_meal_snapshot;
-      if (mealCost == null) {
-        throw new Error("INVALID_PRICE_CONFIGURATION");
-      }
-
-      if (!wallet || wallet.balance < mealCost) {
-        throw new Error("INSUFFICIENT_BALANCE");
-      }
-
-      // 2. Strict Blocking Rule Enforcement
-      if (tracker.tiffins_due >= 2) {
-        await tx.deliveries.update({
-          where: { id: deliveryId },
-          data: { status: "BLOCKED_TIFFIN_DEBT" },
-        });
-        throw new Error("BLOCKED_TIFFIN_DEBT");
-      }
-
-      // [FIX] ISSUE 3: Tiffin Box Validation
-      const newTiffinBox = await tx.tiffin_boxes.findUnique({
-        where: { id: tiffinBoxId },
-      });
-      if (!newTiffinBox) throw new Error("TIFFIN_NOT_FOUND");
-      if (newTiffinBox.status === "WITH_CUSTOMER")
-        throw new Error("TIFFIN_ALREADY_WITH_CUSTOMER");
-
+    // Main transaction (only operations that must be atomic)
+    return await prisma.$transaction(async (tx) => {
+      let newTiffinsDue = tracker.tiffins_due + 1;
       if (returnedTiffinBoxId) {
-        const returnedTiffin = await tx.tiffin_boxes.findUnique({
-          where: { id: returnedTiffinBoxId },
-        });
-        if (!returnedTiffin) throw new Error("RETURNED_TIFFIN_NOT_FOUND");
-      }
-
-      // 3. Tiffin Tracker Logic (Inside Same Transaction)
-      let newTiffinsDue = tracker.tiffins_due + 1; // New box given
-      if (returnedTiffinBoxId) {
-        newTiffinsDue -= 1; // Old box collected
+        newTiffinsDue -= 1;
       }
 
       await tx.tiffin_tracker.update({
@@ -278,7 +266,6 @@ export const deliveryService = {
         data: { tiffins_due: newTiffinsDue },
       });
 
-      // 4. Update Delivery Status & Timestamp
       const updateResult = await tx.deliveries.updateMany({
         where: {
           id: deliveryId,
@@ -301,7 +288,6 @@ export const deliveryService = {
         where: { id: deliveryId },
       });
 
-      // 5. Log Tiffin Events
       await tx.tiffin_events.create({
         data: {
           tiffin_box_id: tiffinBoxId,
@@ -321,20 +307,16 @@ export const deliveryService = {
           },
         });
 
-        // Update old physical box status
         await tx.tiffin_boxes.update({
           where: { id: returnedTiffinBoxId },
           data: { status: "IN_KITCHEN" },
         });
       }
 
-      // Update new physical box status
       await tx.tiffin_boxes.update({
         where: { id: tiffinBoxId },
         data: { status: "WITH_CUSTOMER" },
       });
-
-      // 6. Wallet Deduction Logic (Inside Same Transaction)
 
       await tx.subscription_wallets.update({
         where: { id: wallet.id },
@@ -352,7 +334,6 @@ export const deliveryService = {
         },
       });
 
-      // 7. Route Logging
       await tx.route_logs.create({
         data: {
           delivery_boy_id: driverId,
@@ -366,6 +347,93 @@ export const deliveryService = {
       return updatedDelivery;
     });
   },
+};
+
+export const resetDeliveredMeal = async (deliveryId: string) => {
+  const delivery = await prisma.deliveries.findUnique({
+    where: { id: deliveryId },
+    include: {
+      subscriptions: {
+        include: {
+          subscription_wallets: true,
+          tiffin_tracker: true,
+        },
+      },
+    },
+  });
+
+  if (!delivery) {
+    throw new Error("DELIVERY_NOT_FOUND");
+  }
+
+  if (delivery.status !== "DELIVERED") {
+    throw new Error("INVALID_DELIVERY_STATE");
+  }
+
+  const mealCost = delivery.subscriptions.price_per_meal_snapshot;
+  if (mealCost == null) {
+    throw new Error("INVALID_PRICE_CONFIGURATION");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    const resetResult = await tx.deliveries.updateMany({
+      where: {
+        id: deliveryId,
+        status: "DELIVERED",
+      },
+      data: { status: "PENDING" },
+    });
+
+    if (resetResult.count === 0) {
+      throw new Error("DELIVERY_ALREADY_RESET");
+    }
+
+    const isBuffer = delivery.is_buffer_meal;
+    if (!isBuffer) {
+      const wallet = delivery.subscriptions.subscription_wallets;
+      if (!wallet) {
+        throw new Error("WALLET_NOT_FOUND");
+      }
+
+      await tx.subscription_wallets.update({
+        where: { id: wallet.id },
+        data: { balance: { increment: mealCost } },
+      });
+
+      await tx.wallet_transactions.create({
+        data: {
+          subscription_wallet_id: wallet.id,
+          amount: mealCost,
+          transaction_type: "CREDIT",
+          transaction_category: "DELIVERY_REVERSAL",
+          reference_id: deliveryId,
+          description: `Reversal for delivery ${deliveryId}`,
+        },
+      });
+    }
+
+    const tracker = delivery.subscriptions.tiffin_tracker;
+    if (tracker) {
+      await tx.tiffin_tracker.update({
+        where: { id: tracker.id },
+        data: {
+          tiffins_due: Math.max(0, tracker.tiffins_due - 1),
+        },
+      });
+    }
+
+    return await tx.deliveries.findUnique({
+      where: { id: deliveryId },
+      include: {
+        subscriptions: {
+          include: {
+            subscription_wallets: true,
+            tiffin_tracker: true,
+          },
+        },
+      },
+    });
+  });
 };
 
 // Helper function to fetch assigned deliveries for driver (used in controller)

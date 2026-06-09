@@ -38,7 +38,13 @@ const processQueue = (error: any, token: string | null = null) => {
 
 api.interceptors.request.use(
   (config) => {
-    const token = getAuthState().accessToken;
+    let token = getAuthState().accessToken;
+    if (!token && typeof window !== 'undefined') {
+      try {
+        const stored = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+        token = stored?.state?.accessToken || null;
+      } catch {}
+    }
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }

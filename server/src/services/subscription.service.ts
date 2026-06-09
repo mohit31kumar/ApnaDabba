@@ -59,6 +59,19 @@ export const subscriptionService = {
       throw new Error('INVALID_DATE_RANGE');
     }
 
+    // Check for overlapping subscriptions
+    const existingOverlap = await prisma.subscriptions.findFirst({
+      where: {
+        user_id: userId,
+        status: { in: ['ACTIVE', 'BUFFER'] },
+        start_date: { lt: end },
+        end_date: { gt: start },
+      },
+    });
+    if (existingOverlap) {
+      throw new Error('OVERLAPPING_SUBSCRIPTION');
+    }
+
     return await prisma.$transaction(async (tx) => {
       // 1. Validate User & Address
       const address = await tx.delivery_addresses.findFirst({
@@ -86,7 +99,7 @@ export const subscriptionService = {
           buffer_meals_remaining: 0,
           
           price_per_meal_snapshot: plan.price_per_meal,
-          total_price_snapshot: new Prisma.Decimal(0), 
+          total_price_snapshot: new Prisma.Decimal(Number(plan.price_per_meal) * Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) * 2), 
           security_deposit_snapshot: plan.security_deposit,
           skip_limit_snapshot: plan.skip_limit,
           buffer_days_snapshot: plan.buffer_days,

@@ -155,7 +155,7 @@ export const adminService = {
   // ==========================================
   // DELIVERY MONITORING
   // ==========================================
-  getDeliveries: async (date?: string, slot?: string, status?: string) => {
+  getDeliveries: async (date?: string, slot?: string, status?: string, page: number = 1, limit: number = 50) => {
     const where: any = {};
     if (date) {
       const targetDate = new Date(date);
@@ -168,21 +168,30 @@ export const adminService = {
     if (slot) where.slot = slot;
     if (status) where.status = status;
 
-    return await prisma.deliveries.findMany({
-      where,
-      include: {
-        subscriptions: {
-          include: {
-            users: {
-              select: { first_name: true, last_name: true, phone: true },
+    const safeLimit = Math.min(limit, 200);
+    const skip = (page - 1) * safeLimit;
+
+    const [data, total] = await Promise.all([
+      prisma.deliveries.findMany({
+        where,
+        include: {
+          subscriptions: {
+            include: {
+              users: {
+                select: { first_name: true, last_name: true, phone: true },
+              },
+              delivery_addresses: { select: { address_line_1: true, address_line_2: true, landmark: true, city: true, pincode: true } },
             },
-            delivery_addresses: { select: { label: true, full_address: true } },
           },
         },
-      },
-      orderBy: { created_at: "desc" },
-      take: 500,
-    });
+        orderBy: { created_at: "desc" },
+        skip,
+        take: safeLimit,
+      }),
+      prisma.deliveries.count({ where }),
+    ]);
+
+    return { data, total, page, limit: safeLimit };
   },
 
   // ==========================================
@@ -239,7 +248,7 @@ export const adminService = {
           },
         },
       },
-      orderBy: { created_at: "desc" },
+      orderBy: { updated_at: "desc" },
     });
   },
 

@@ -13,4 +13,6 @@ export const env = {
   PORT: parseInt(getEnvVar('PORT', '5000'), 10),
   JWT_SECRET: getEnvVar('JWT_SECRET'),
   DATABASE_URL: getEnvVar('DATABASE_URL'),
+  NODE_ENV: getEnvVar('NODE_ENV', 'development'),
 };
+

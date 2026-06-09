@@ -9,15 +9,20 @@ export type Delivery = {
   cutoff_time: string;
 };
 
-export const getDeliveryById = async (deliveryId: string): Promise<Delivery> => {
+export const getDeliveryByDateSlot = async (date: string, slot: 'LUNCH' | 'DINNER'): Promise<Delivery> => {
   try {
-    const response = await api.get(`/api/v1/deliveries/${deliveryId}`);
-    const delivery = response.data.data.delivery;
+    const response = await api.get(`/api/v1/customer/deliveries/by-date`, {
+      params: { date, slot },
+    });
+    const delivery = response.data.data;
     if (!delivery) {
       throw new Error("Failed to fetch delivery");
     }
     return delivery;
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      throw new Error('NO_DELIVERY');
+    }
     throw new Error('Failed to fetch delivery');
   }
 };

@@ -3,11 +3,10 @@ import {
   generateDeliveries, 
   skipMyDelivery, 
   getDeliveryDetails,
-  fetchDriverDeliveries,
+  getDriverAssignedDeliveries,
   logDriverArrival,
   markDeliveryFailed,
-  markHandoverComplete,
-  getDriverAssignedDeliveries
+  markHandoverComplete
 } from '../controllers/delivery.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 import { requireRole, requireOwnership } from '../middlewares/rbac.middleware';
@@ -38,7 +37,12 @@ router.post('/:id/skip', requireAuth, requireRole('CUSTOMER'), skipMyDelivery);
 router.get('/driver/assigned', 
   requireAuth, 
   requireRole('DELIVERY_BOY'), 
-  fetchDriverDeliveries
+  getDriverAssignedDeliveries
+);
+router.get('/:id/driver/assigned', 
+  requireAuth, 
+  requireRole('DELIVERY_BOY'), 
+  getDriverAssignedDeliveries
 );
 
 // 2. Mark arrived at location
@@ -61,7 +65,5 @@ router.post('/:id/driver/deliver',
   requireRole('DELIVERY_BOY'), 
   markHandoverComplete
 );
-
-router.get('/driver/assigned', getDriverAssignedDeliveries);
 
 export default router;

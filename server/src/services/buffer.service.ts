@@ -21,16 +21,24 @@ export const bufferService = {
 
     for (const sub of eligibleSubscriptions) {
       await prisma.$transaction(async (tx) => {
-        const expiryDate = new Date(sub.end_date);
-        expiryDate.setDate(expiryDate.getDate() + sub.buffer_days_snapshot);
+        // Re-read subscription inside transaction to get fresh skipped_meal_pool
+        const freshSub = await tx.subscriptions.findUnique({
+          where: { id: sub.id },
+          select: { status: true, end_date: true, buffer_days_snapshot: true, skipped_meal_pool: true },
+        });
+
+        if (!freshSub || freshSub.status !== 'ACTIVE') return;
+
+        const expiryDate = new Date(freshSub.end_date);
+        expiryDate.setDate(expiryDate.getDate() + freshSub.buffer_days_snapshot);
 
         await tx.subscriptions.update({
           where: { id: sub.id },
           data: {
             status: 'BUFFER',
-            buffer_start_date: sub.end_date,
+            buffer_start_date: freshSub.end_date,
             buffer_expiry_date: expiryDate,
-            buffer_meals_remaining: sub.skipped_meal_pool
+            buffer_meals_remaining: freshSub.skipped_meal_pool
           }
         });
 
@@ -39,7 +47,7 @@ export const bufferService = {
             entity_name: 'subscriptions',
             entity_id: sub.id,
             action: 'SYSTEM_BUFFER_ACTIVATED',
-            new_state: { status: 'BUFFER', meals_transferred: sub.skipped_meal_pool }
+            new_state: { status: 'BUFFER', meals_transferred: freshSub.skipped_meal_pool }
           }
         });
       });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import api from "@/lib/axios";
+import { api } from "@/services/api";
 
 interface Delivery {
   id: string;
@@ -10,8 +10,6 @@ interface Delivery {
   status: string;
   subscription_id: string;
 }
-
-// driver ui crashing. still need to explain to chatgpt.
 
 export default function DriverDashboardPage() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -24,6 +22,7 @@ export default function DriverDashboardPage() {
     setError(null);
     try {
       const today = new Date().toISOString().split("T")[0];
+      
       const response = await api.get<{ success: boolean; data: Delivery[] }>(
         `/api/v1/deliveries/driver/assigned?date=${today}`
       );

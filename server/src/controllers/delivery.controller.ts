@@ -19,7 +19,7 @@ export const generateDeliveries = async (req: Request, res: Response): Promise<v
 
 export const skipMyDelivery = async (req: Request, res: Response): Promise<void> => {
   try {
-    const deliveryId = req.params.id;
+    const deliveryId = req.params.id as string;
     const customerId = req.user.id;
     if (!validators.isUUID(deliveryId)) {
       res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Invalid ID.' });
@@ -33,7 +33,22 @@ export const skipMyDelivery = async (req: Request, res: Response): Promise<void>
 };
 
 export const getDeliveryDetails = async (req: Request, res: Response): Promise<void> => {
-    res.status(200).json({ success: true, data: req.resource });
+  const resource = req.resource;
+  const safeDelivery = resource ? {
+    id: resource.id,
+    status: resource.status,
+    delivery_date: resource.delivery_date,
+    slot: resource.slot,
+    cutoff_time: resource.cutoff_time,
+    is_buffer_meal: resource.is_buffer_meal,
+    delivered_at: resource.delivered_at,
+    location_locked: resource.location_locked,
+    driver_id: resource.driver_id,
+    tiffin_box_id: resource.tiffin_box_id,
+    delivery_notes: resource.delivery_notes,
+    is_special_meal: resource.is_special_meal,
+  } : null;
+  res.status(200).json({ success: true, data: { delivery: safeDelivery } });
 };
 
 // ==========================================
@@ -74,36 +89,9 @@ export const getDriverAssignedDeliveries = async (req: Request, res: Response) =
   }
 };
 
-// This controller allows the driver to log their arrival at the delivery location, which is a critical step before marking a delivery as failed or completed. It ensures that the driver's location is securely logged for accountability.
-export const fetchDriverDeliveries = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const driverId = req.user.id;
-    const { date, slot } = req.query;
-
-    if (!date || typeof date !== 'string' || isNaN(Date.parse(date))) {
-      res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Valid date required.' });
-      return;
-    }
-    if (slot !== 'LUNCH' && slot !== 'DINNER') {
-      res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Slot must be LUNCH or DINNER.' });
-      return;
-    }
-
-    const deliveries = await deliveryService.getAssignedDeliveries(driverId, date, slot);
-
-    res.status(200).json({
-      success: true,
-      message: 'Assigned deliveries fetched successfully.',
-      data: deliveries
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: 'SERVER_ERROR', message: 'Failed to fetch deliveries.' });
-  }
-};
-
 export const logDriverArrival = async (req: Request, res: Response): Promise<void> => {
   try {
-    const deliveryId = req.params.id;
+    const deliveryId = req.params.id as string;
     const driverId = req.user.id;
     const { lat, lng } = req.body;
 
@@ -137,7 +125,7 @@ export const logDriverArrival = async (req: Request, res: Response): Promise<voi
 
 export const markDeliveryFailed = async (req: Request, res: Response): Promise<void> => {
   try {
-    const deliveryId = req.params.id;
+    const deliveryId = req.params.id as string;
     const driverId = req.user.id;
     const { lat, lng } = req.body;
 
@@ -172,7 +160,7 @@ export const markDeliveryFailed = async (req: Request, res: Response): Promise<v
 
 export const markHandoverComplete = async (req: Request, res: Response): Promise<void> => {
   try {
-    const deliveryId = req.params.id;
+    const deliveryId = req.params.id as string;
     const driverId = req.user.id;
     const { tiffin_box_id, returned_tiffin_box_id, lat, lng } = req.body;
 

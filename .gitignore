@@ -1,0 +1,25 @@
+# Team / project management files (not for GitHub)
+instructions.txt
+standards.txt
+status.txt
+module-flows.md
+report.md
+apnaDabba.docx
+team-tracker.xlsx
+opencode.json
+opencode-relay.json
+
+# Node modules at root level
+node_modules/
+
+# Env files
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

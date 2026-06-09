@@ -32,7 +32,7 @@ export const getUsers = async (req: Request, res: Response): Promise<void> => {
 
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!validators.isUUID(id)) {
       res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Invalid User ID.' });
       return;
@@ -50,7 +50,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 
 export const updateUserStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { is_active } = req.body;
 
     if (!validators.isUUID(id)) {
@@ -90,7 +90,7 @@ export const getSubscriptions = async (req: Request, res: Response): Promise<voi
 
 export const getSubscriptionById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     if (!validators.isUUID(id)) {
       res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Invalid Subscription ID.' });
       return;
@@ -108,7 +108,7 @@ export const getSubscriptionById = async (req: Request, res: Response): Promise<
 
 export const updateSubscriptionStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { status } = req.body;
 
    if (!validators.isUUID(id)) {
@@ -129,7 +129,7 @@ export const updateSubscriptionStatus = async (req: Request, res: Response): Pro
 
 export const getDeliveries = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { date, slot, status } = req.query;
+    const { date, slot, status, page, limit } = req.query;
     
     if (date && isNaN(Date.parse(date as string))) {
       res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Invalid date format.' });
@@ -141,7 +141,10 @@ export const getDeliveries = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    const data = await adminService.getDeliveries(date as string, slot as string, status as string);
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 50;
+
+    const data = await adminService.getDeliveries(date as string, slot as string, status as string, pageNum, limitNum);
     res.status(200).json({ success: true, data });
   } catch (error: any) {
     res.status(500).json({ success: false, error: 'SERVER_ERROR', message: 'Failed to fetch deliveries.' });
@@ -150,7 +153,7 @@ export const getDeliveries = async (req: Request, res: Response): Promise<void> 
 
 export const getWalletBySubscriptionId = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { subscriptionId } = req.params;
+    const subscriptionId = req.params.subscriptionId as string;
     if (!validators.isUUID(subscriptionId)) {
       res.status(400).json({ success: false, error: 'VALIDATION_ERROR', message: 'Invalid Subscription ID.' });
       return;
@@ -168,7 +171,7 @@ export const getWalletBySubscriptionId = async (req: Request, res: Response): Pr
 
 export const getWalletTransactions = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { subscriptionId } = req.params;
+    const subscriptionId = req.params.subscriptionId as string;
     const page = parseInt(req.query.page as string) || 1;
     const requestedLimit = parseInt(req.query.limit as string) || 20;
     const limit = Math.min(requestedLimit, 100);

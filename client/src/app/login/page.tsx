@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
@@ -102,7 +103,7 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="phone" className="block text-sm font-medium text-gray">
               Phone Number
             </label>
             <div className="mt-1">
@@ -114,7 +115,7 @@ export default function LoginPage() {
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // Restricts to numbers
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-black/40 focus:outline-none text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                 placeholder="10-digit mobile number"
                 disabled={isLoading}
               />
@@ -122,7 +123,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-medium text-gray">
               Password
             </label>
             <div className="mt-1">
@@ -133,7 +134,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
+                className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-black/40 focus:outline-none text-black focus:ring-2 focus:ring-amber-500 focus:border-amber-500 sm:text-sm"
                 placeholder="••••••••"
                 disabled={isLoading}
               />
@@ -176,6 +177,13 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Don&apos;t have an account?{' '}
+          <Link href="/register" className="font-medium text-amber-600 hover:text-amber-500">
+            Create one
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -2,6 +2,82 @@ import { Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { validators } from '../utils/validators';
 
+const VALID_ROLES = ['CUSTOMER', 'DELIVERY_BOY', 'ADMIN'] as const;
+
+export const register = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { phone, password, first_name, last_name, role } = req.body;
+
+    if (!phone || !validators.is10DigitIndianPhone(phone)) {
+      res.status(400).json({
+        success: false, error: 'VALIDATION_ERROR',
+        message: 'Phone number must be exactly 10 digits.'
+      });
+      return;
+    }
+
+    if (!password || typeof password !== 'string' || password.length < 8) {
+      res.status(400).json({
+        success: false, error: 'VALIDATION_ERROR',
+        message: 'Password must be at least 8 characters long.'
+      });
+      return;
+    }
+
+    if (!first_name || typeof first_name !== 'string' || !first_name.trim()) {
+      res.status(400).json({
+        success: false, error: 'VALIDATION_ERROR',
+        message: 'First name is required.'
+      });
+      return;
+    }
+
+    if (!last_name || typeof last_name !== 'string' || !last_name.trim()) {
+      res.status(400).json({
+        success: false, error: 'VALIDATION_ERROR',
+        message: 'Last name is required.'
+      });
+      return;
+    }
+
+    if (!role || !VALID_ROLES.includes(role)) {
+      res.status(400).json({
+        success: false, error: 'VALIDATION_ERROR',
+        message: 'Role must be one of: CUSTOMER, DELIVERY_BOY, ADMIN.'
+      });
+      return;
+    }
+
+    const result = await authService.register(phone, password, first_name.trim(), last_name.trim(), role);
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful.',
+      data: {
+        user: result.user,
+        tokens: result.tokens,
+        force_password_change: result.force_password_change,
+        login_time: new Date().toISOString()
+      }
+    });
+  } catch (error: any) {
+    console.error('[AuthController] register Error:', error.message);
+
+    if (error.message === 'PHONE_ALREADY_EXISTS') {
+      res.status(409).json({
+        success: false, error: 'DUPLICATE_ENTRY',
+        message: 'A user with this phone number already exists.'
+      });
+      return;
+    }
+
+    res.status(500).json({
+      success: false, error: 'SERVER_ERROR',
+      message: 'An unexpected error occurred during registration.'
+    });
+  }
+};
+
 export const loginWithPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     const { phone, password } = req.body;

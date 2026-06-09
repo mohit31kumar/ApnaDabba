@@ -2,12 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    user?: any;
-  }
-}
-
 export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
 
@@ -23,7 +17,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const decoded = jwt.verify(token, env.JWT_SECRET) as jwt.JwtPayload & { id: string; role: string };
     req.user = decoded;
     next();
   } catch (error: any) {

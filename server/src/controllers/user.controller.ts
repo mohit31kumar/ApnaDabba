@@ -57,6 +57,12 @@ export const createAdminUser = async (req: Request, res: Response): Promise<void
     if (!password || password.length < 8) {
       details.push({ field: 'password', issue: 'Password must be at least 8 characters long' });
     }
+    if (first_name && (typeof first_name !== 'string' || first_name.length > 100 || /<[^>]*>/.test(first_name))) {
+      details.push({ field: 'first_name', issue: 'Must be a string under 100 characters with no HTML tags' });
+    }
+    if (last_name && (typeof last_name !== 'string' || last_name.length > 100 || /<[^>]*>/.test(last_name))) {
+      details.push({ field: 'last_name', issue: 'Must be a string under 100 characters with no HTML tags' });
+    }
 
     if (details.length > 0) {
       res.status(400).json({
@@ -99,7 +105,7 @@ export const createAdminUser = async (req: Request, res: Response): Promise<void
 
 export const updateUserStatus = async (req: Request, res: Response): Promise<void> => {
   try {
-    const targetUserId = req.params.id;
+    const targetUserId = req.params.id as string;
     const { is_active } = req.body;
     const adminId = req.user.id;
 

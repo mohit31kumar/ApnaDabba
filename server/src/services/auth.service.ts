@@ -3,6 +3,72 @@ import prisma from '../lib/prisma';
 import { tokenUtils } from '../utils/token.utils';
 
 export const authService = {
+  register: async (phone: string, password: string, first_name: string, last_name: string, role: string) => {
+    const existingUser = await prisma.users.findUnique({
+      where: { phone }
+    });
+
+    if (existingUser) {
+      throw new Error('PHONE_ALREADY_EXISTS');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    const user = await prisma.users.create({
+      data: {
+        phone,
+        role,
+        first_name,
+        last_name,
+        password_hash,
+        is_temp_password: false,
+        is_active: true
+      },
+      select: {
+        id: true,
+        phone: true,
+        role: true,
+        first_name: true,
+        last_name: true,
+        is_temp_password: true
+      }
+    });
+
+    const accessToken = tokenUtils.generateAccessToken(user.id, user.role);
+    const rawRefreshToken = tokenUtils.generateRawRefreshToken();
+    const hashedRefreshToken = tokenUtils.hashRefreshToken(rawRefreshToken);
+
+    const refreshTokenExpiry = new Date();
+    refreshTokenExpiry.setDate(refreshTokenExpiry.getDate() + 7);
+
+    await prisma.refresh_tokens.create({
+      data: {
+        user_id: user.id,
+        token_hash: hashedRefreshToken,
+        expires_at: refreshTokenExpiry,
+        revoked: false
+      }
+    });
+
+    const safeUser = {
+      id: user.id,
+      phone: user.phone,
+      role: user.role,
+      first_name: user.first_name,
+      last_name: user.last_name
+    };
+
+    return {
+      user: safeUser,
+      tokens: {
+        access_token: accessToken,
+        refresh_token: rawRefreshToken
+      },
+      force_password_change: false
+    };
+  },
+
   loginWithPassword: async (phone: string, password: string) => {
     const user = await prisma.users.findUnique({
       where: { phone }
@@ -16,6 +82,9 @@ export const authService = {
       throw new Error('ACCOUNT_DISABLED');
     }
 
+    if (!user.password_hash) {
+      throw new Error('INVALID_CREDENTIALS');
+    }
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       throw new Error('INVALID_CREDENTIALS');
@@ -88,6 +157,16 @@ export const authService = {
     newExpiry.setDate(newExpiry.getDate() + 7);
 
     await prisma.$transaction(async (tx) => {
+      // Re-check user active status inside transaction
+      const user = await tx.users.findUnique({
+        where: { id: existingToken.user_id },
+        select: { is_active: true },
+      });
+
+      if (!user || !user.is_active) {
+        throw new Error('ACCOUNT_DISABLED');
+      }
+
       const revocationResult = await tx.refresh_tokens.updateMany({
         where: {
           id: existingToken.id,
