@@ -1,0 +1,480 @@
+APNADABBA - MASTER MODULE CHECKLIST
+Overall Project Completion: ~30%
+
+--- STRATEGY UPDATE (2026-06-24) ---
+Phase 0 (Flow Finalization) completed for Modules 1-16.
+Moving to Phase 1 (Implementation).
+Modules 17-26 flows to be finalized on-demand during implementation.
+
+--- TEAM STRUCTURE (Updated 2026-06-08) ---
+4 OpenCode instances connected via relay:
+  tech-lead  (port 4000) — Tech Lead + Production Readiness Auditor
+  architect  (port 4001) — Principal Architect + Database Architect
+  backend    (port 4002) — Senior Backend Engineer + DevOps Reviewer
+  frontend   (port 4003) — Senior Frontend Engineer + QA Lead
+
+Task tracking: team-tracker.xlsx (4 sheets: Team Roster, Module Progress, Task Tracker, Activity Log)
+
+--- CURRENT STRATEGY ---
+Phase 0 (Flow Finalization): COMPLETE — Modules 1-16 finalized in module-flows.md.
+Phase 1 (Implementation): ACTIVE — Begin implementing finalized modules.
+Remaining modules (17-26): Flows will be finalized on-demand during implementation. 
+When a module is assigned, Mohit will provide the flow requirements.
+Implementation assigned to: backend / frontend
+Orchestration by: tech-lead
+
+--- DATABASE MIGRATION ---
+Migrated from PostgreSQL (Neon cloud) to MySQL (local MariaDB 11.8.6)
+- schema.prisma: provider changed to mysql, all type mappings updated
+- .env: DATABASE_URL updated to local MySQL
+- Fresh migration: 20260606143138_init
+- Status: Server verified running on local MySQL
+
+--- BUG FIX STATUS (Updated) ---
+Phase 1 - Critical:    6/6 COMPLETE
+Phase 2 - High:        5/5 COMPLETE (wallet CHECK constraint deferred to migration)
+Phase 3 - Medium:      7/7 COMPLETE
+Phase 4 - Schema:      2/3 COMPLETE (indexes added; CHECK constraint needs raw SQL migration)
+
+[40%] Module 1 — Authentication & User Management
+    [60%] Customer Authentication
+        [ ] Customer Registration
+        [ ] OTP Verification
+        [x] Password Login
+        [x] Refresh Token Flow
+        [x] Logout
+
+    [100%] Driver Authentication
+        [x] Driver Login (shared auth)
+        [x] Driver Session Management (JWT)
+
+    [100%] Admin Authentication
+        [x] Admin Login (shared auth)
+        [x] Admin Session Management (JWT)
+
+    [40%] User Management
+        [~] Profile Management (getMyProfile exists, no update)
+        [ ] Change Password
+        [x] Account Status Management (enable/disable)
+        [~] Role Management (admin creates users with roles)
+
+--------------------------------------------------
+
+[30%] Module 2 — Customer Lifecycle Management
+
+    [0%] Customer Onboarding
+        [ ] Registration
+        [ ] Profile Creation
+        [ ] Address Setup
+
+    [100%] Customer Dashboard
+        [x] Dashboard Home (real API data)
+        [x] Subscription Summary
+        [x] Wallet Summary
+        [x] Today's Meals
+        [x] Upcoming Meals
+
+    [0%] Customer Account
+        [ ] Profile Update
+        [ ] Address Management
+        [ ] Account Settings
+
+--------------------------------------------------
+
+[20%] Module 3 — Plan Management
+
+    [25%] Plan Configuration
+        [x] Create Plan
+        [ ] Update Plan
+        [ ] Activate Plan
+        [ ] Deactivate Plan
+
+    [15%] Plan Discovery
+        [~] Browse Plans (server endpoint exists, no customer UI)
+        [ ] View Plan Details
+        [ ] Compare Plans
+
+--------------------------------------------------
+
+[15%] Module 4 — Subscription Management
+
+    [25%] Subscription Creation
+        [~] Select Plan (server create works, no customer UI)
+        [ ] Select Address
+        [ ] Choose Start Date
+        [x] Create Subscription (server-side)
+
+    [15%] Subscription Lifecycle
+        [~] Activate (admin can update status)
+        [ ] Pause
+        [ ] Resume
+        [~] Cancel (admin can update status)
+        [ ] Renew
+
+    [25%] Subscription Monitoring
+        [x] Active Subscriptions (admin view)
+        [ ] Expiring Subscriptions
+        [ ] Subscription History
+
+--------------------------------------------------
+
+[5%] Module 5 — Address Management
+
+    [0%] Address Operations
+        [ ] Add Address
+        [ ] Edit Address
+        [ ] Delete Address
+        [ ] Set Default Address
+
+    [0%] Delivery Validation
+        [ ] Service Area Validation
+        [ ] Address Verification
+
+--------------------------------------------------
+
+[35%] Module 6 — Wallet Management
+
+    [100%] Wallet Setup
+        [x] Create Wallet (auto-created with subscription)
+        [x] Link Wallet to Subscription (1:1)
+
+    [35%] Wallet Operations
+        [ ] Wallet Top-Up
+        [x] Wallet Balance View
+        [~] Wallet Refund (reversal refunds exist, no general refund)
+
+    [80%] Wallet Ledger
+        [x] Debit Transactions (meal deduction on delivery)
+        [x] Credit Transactions (reversal)
+        [x] Transaction History (admin view)
+
+--------------------------------------------------
+
+[15%] Module 7 — Security Deposit Management
+
+    [50%] Deposit Collection
+        [~] Deposit Setup (security_deposit_held set on wallet creation)
+        [x] Deposit Tracking (visible in wallet)
+
+    [0%] Deposit Refund
+        [ ] Refund Processing
+        [ ] Refund Approval
+
+--------------------------------------------------
+
+[80%] Module 8 — Delivery Generation Engine
+
+    [100%] Lunch Generation
+        [x] Active Subscription Check
+        [x] Buffer Check
+        [x] Duplicate Prevention (unique constraint + P2002 catch)
+
+    [100%] Dinner Generation
+        [x] Active Subscription Check
+        [x] Buffer Check
+        [x] Duplicate Prevention
+
+    [100%] Delivery Scheduling
+        [x] Cutoff Time Assignment (LUNCH 10:00, DINNER 16:00)
+        [x] Delivery Queue Creation
+
+    Missing: Cron automation (manual admin trigger works)
+
+--------------------------------------------------
+
+[50%] Module 9 — Delivery Lifecycle Management
+
+    [100%] Delivery Creation
+        [x] Delivery Record Creation
+        [x] Status Initialization
+
+    [60%] Delivery Tracking
+        [x] Pending Deliveries
+        [x] Today's Deliveries
+        [x] Upcoming Deliveries
+        [ ] Delivery History
+
+    [100%] Delivery Statuses
+        [x] PENDING
+        [x] DISPATCHED
+        [x] DELIVERED
+        [x] SKIPPED
+        [x] FAILED
+        [x] BLOCKED_TIFFIN_DEBT
+        [x] CANCELLED
+
+--------------------------------------------------
+
+[40%] Module 10 — Skip Meal Management
+
+    [100%] Skip Requests
+        [x] Lunch Skip (delivery-level)
+        [x] Dinner Skip (delivery-level)
+
+    [100%] Skip Validation
+        [x] Cutoff Time Validation
+        [x] Duplicate Skip Prevention
+
+    [0%] Skip Tracking
+        [ ] Skip History
+        [ ] Future Skip Schedule
+
+--------------------------------------------------
+
+[45%] Module 11 — Driver Management
+
+    [50%] Driver Setup
+        [x] Create Driver (admin)
+        [ ] Edit Driver
+        [x] Activate Driver (updateUserStatus)
+        [x] Deactivate Driver (updateUserStatus)
+
+    [35%] Driver Operations
+        [x] Driver Listing (admin, role filter)
+        [ ] Driver Profile
+
+--------------------------------------------------
+
+[0%] Module 12 — Driver Assignment Engine
+
+    [0%] Assignment Logic
+        [ ] Round Robin Assignment
+        [ ] Driver Load Distribution
+
+    [0%] Assignment Management
+        [ ] Assign Deliveries
+        [ ] Reassign Deliveries
+        [ ] Assignment History
+
+--------------------------------------------------
+
+[50%] Module 13 — Driver Dashboard
+
+    [50%] Assigned Deliveries
+        [x] View Deliveries (real API)
+        [ ] Filter Deliveries
+
+    [70%] Delivery Execution
+        [x] Mark Delivered (full flow with GPS, tiffin, wallet)
+        [x] Delivery Status View
+
+--------------------------------------------------
+
+[90%] Module 14 — Delivery Completion Engine
+
+    [100%] Delivery Validation
+        [x] Subscription Validation
+        [x] Wallet Validation
+        [x] Tiffin Validation
+
+    [100%] Financial Processing
+        [x] Wallet Deduction
+        [x] Transaction Creation
+
+    [100%] Tiffin Processing
+        [x] Increment Tiffin Due
+
+--------------------------------------------------
+
+[60%] Module 15 — Delivery Reversal Management
+
+    [60%] Delivery Reset
+        [x] Validate Delivered Status (in service)
+        [~] Reset Delivery (service complete, no route/UI exposed)
+
+    [60%] Financial Reversal
+        [~] Wallet Refund (in service)
+        [~] CREDIT Transaction Creation (in service)
+
+    [60%] Tiffin Reversal
+        [~] Decrement Tiffin Due (in service)
+
+--------------------------------------------------
+
+[70%] Module 16 — Buffer Meal Management
+
+    [50%] Buffer Activation
+        [~] Create Buffer Subscription (auto-transition from ACTIVE)
+
+    [70%] Buffer Tracking
+        [x] Remaining Buffer Meals (dashboard display)
+        [x] Buffer Expiry (logic exists, not cron-scheduled)
+
+    [100%] Buffer Consumption
+        [x] Deduct Buffer Meals (on delivery generation)
+        [x] Expire Buffer Meals (processBufferExpirations exists)
+
+--------------------------------------------------
+
+[65%] Module 17 — Tiffin Recovery Management
+
+    [100%] Tiffin Tracking
+        [x] Track Outstanding Tiffins (tiffin_tracker model)
+        [x] Track Returns (tiffin_events on handover)
+
+    [100%] Debt Management
+        [x] Debt Calculation (tiffins_due counting)
+        [x] Service Blocking (>= 2 tiffins blocks delivery)
+
+    [50%] Recovery Monitoring
+        [x] Recovery Reports (admin getTiffinDefaulters)
+        [ ] Customer Recovery Status (no customer-facing view)
+
+--------------------------------------------------
+
+[65%] Module 18 — Customer Dashboard
+
+    [100%] Dashboard Widgets
+        [x] Subscription Card
+        [x] Wallet Card
+        [x] Today's Deliveries
+        [x] Upcoming Deliveries
+
+    [35%] Customer Actions
+        [ ] Browse Plans (button exists, no-op)
+        [x] Skip Meal (via deliveries page)
+        [ ] View History
+
+--------------------------------------------------
+
+[5%] Module 19 — Admin Dashboard
+
+    [0%] Operational Overview
+        [ ] Customer Summary (API exists, frontend skeleton)
+        [ ] Subscription Summary (API exists, frontend skeleton)
+        [ ] Wallet Summary (API exists, frontend skeleton)
+
+    [0%] Delivery Overview
+        [ ] Delivery Monitoring (API exists, frontend skeleton)
+        [ ] Driver Monitoring
+
+    [0%] Business KPIs
+        [ ] Revenue (API exists, frontend skeleton)
+        [ ] Active Customers (API exists, frontend skeleton)
+        [ ] Deliveries (API exists, frontend skeleton)
+
+--------------------------------------------------
+
+[0%] Module 20 — Notification Management
+
+    [0%] Authentication Notifications
+        [ ] OTP
+
+    [0%] Customer Notifications
+        [ ] Delivery Reminder
+        [ ] Wallet Low Balance
+        [ ] Subscription Expiry
+
+    [0%] Driver Notifications
+        [ ] Assignment Alerts
+
+--------------------------------------------------
+
+[10%] Module 21 — Reports & Analytics
+
+    [10%] Customer Reports
+        [~] Active Customers (basic count in dashboard stats)
+        [ ] Subscription Growth
+
+    [10%] Financial Reports
+        [~] Revenue Report (today's revenue in dashboard stats)
+        [ ] Wallet Report
+
+    [0%] Delivery Reports
+        [ ] Delivery Success Rate
+        [ ] Driver Performance
+
+    [100%] Recovery Reports
+        [x] Tiffin Recovery Report (admin getTiffinDefaulters)
+
+--------------------------------------------------
+
+[30%] Module 22 — Audit & Activity Tracking
+
+    [0%] User Activity Logs
+        [ ] Login Activity (not specifically tracked)
+        [ ] Logout Activity (not specifically tracked)
+
+    [40%] Operational Logs
+        [~] Delivery Changes (audit logs on state changes)
+        [~] Subscription Changes (audit logs created)
+        [ ] Wallet Changes (not audited)
+
+    [50%] Admin Audit Logs
+        [x] Admin Actions (audit logs for admin ops)
+        [~] Reversal Actions (auditable via existing mechanisms)
+
+--------------------------------------------------
+
+[10%] Module 23 — Automation & Scheduler Engine
+
+    [35%] Delivery Automation
+        [~] Lunch Generation (endpoint exists, not cron-scheduled)
+        [~] Dinner Generation (endpoint exists, not cron-scheduled)
+
+    [0%] Assignment Automation
+        [ ] Auto Driver Assignment
+
+    [10%] Subscription Automation
+        [~] Expiry Check (buffer service exists, not cron-scheduled)
+        [ ] Renewal Reminder
+
+    [0%] Notification Automation
+        [ ] Scheduled Notifications
+
+--------------------------------------------------
+
+[25%] Module 24 — System Configuration
+
+    [60%] Operational Rules
+        [x] Meal Cutoff Times (hardcoded in delivery service)
+        [x] Skip Rules (implemented in skip logic)
+        [x] Buffer Rules (implemented in buffer service)
+
+    [0%] Financial Rules
+        [ ] Wallet Rules
+        [ ] Deposit Rules
+
+    [25%] Delivery Rules
+        [ ] Assignment Rules
+        [x] Tiffin Rules (hardcoded: >= 2 blocking)
+
+    Note: system_configs table exists but is unused
+
+--------------------------------------------------
+
+[0%] Module 25 — Integrations
+
+    [0%] Payment Gateway
+        [ ] Wallet Top-Up
+        [ ] Subscription Payment
+
+    [0%] Communication
+        [ ] SMS Integration
+        [ ] WhatsApp Integration
+        [ ] Email Integration
+
+--------------------------------------------------
+
+[50%] Module 26 — Security & Compliance
+
+    [100%] Authentication Security
+        [x] JWT Security (15min expiry, proper secret)
+        [x] Refresh Token Security (rotation, SHA-256 hashing, revocation detection)
+
+    [50%] Platform Security
+        [~] Rate Limiting (login 5/15min, refresh 10/15min)
+        [~] Audit Logs (partial coverage)
+        [x] Access Control (RBAC middleware + dynamic ownership)
+
+    [50%] Data Security
+        [x] Password Encryption (bcrypt, salt rounds 10)
+        [ ] Sensitive Data Protection (not specifically addressed)
+
+==================================================
+
+LEGEND:
+  [x] = Fully implemented (production-ready)
+  [~] = Partially implemented (logic or API exists but incomplete)
+  [ ] = Not implemented
+  [N%] = Module completion estimates based on actual code analysis

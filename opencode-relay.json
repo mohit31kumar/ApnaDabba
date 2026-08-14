@@ -1,0 +1,12 @@
+{
+  "instances": {
+    "tech-lead": { "port": 4000 },
+    "architect": { "port": 4001 },
+    "backend": { "port": 4002 },
+    "frontend": { "port": 4003 },
+    "mimo-tech-lead": { "port": 4004 },
+    "mimo-architect": { "port": 4005 },
+    "mimo-backend": { "port": 4006 },
+    "mimo-frontend": { "port": 4007 }
+  }
+}

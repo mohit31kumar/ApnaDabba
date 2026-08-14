@@ -1,0 +1,393 @@
+# APNADABBA ENGINEERING QUALITY STANDARDS
+
+These standards are mandatory for all frontend and backend development.
+
+Failure to follow these standards must be treated as a defect.
+
+---
+
+## BACKEND QUALITY STANDARDS
+
+# B1. Architecture
+
+Must follow:
+
+Route
+→ Controller
+→ Service
+→ Database
+
+Controllers must remain thin.
+
+Business logic belongs only inside Services.
+
+Never place business logic inside:
+
+* Routes
+* Controllers
+* Middleware
+
+---
+
+# B2. Single Responsibility
+
+Each service function must have one responsibility.
+
+Bad:
+
+createSubscriptionAndAssignDriverAndSendNotification()
+
+Good:
+
+createSubscription()
+assignDriver()
+sendNotification()
+
+---
+
+# B3. Transaction Safety
+
+Use database transactions whenever:
+
+* Wallet balance changes
+* Subscription status changes
+* Delivery completion occurs
+* Delivery reversal occurs
+* Multiple tables are updated
+
+Never allow partial writes.
+
+---
+
+# B4. Concurrency Protection
+
+Every critical operation must consider:
+
+* Double clicks
+* Duplicate requests
+* Simultaneous updates
+
+Use:
+
+* updateMany()
+* optimistic locking
+* status guards
+
+where appropriate.
+
+---
+
+# B5. Validation
+
+Validate:
+
+* Request body
+* Query params
+* Route params
+* Business rules
+
+Never trust frontend input.
+
+---
+
+# B6. Error Handling
+
+Every API must return a consistent structure.
+
+Success:
+
+{
+success: true,
+data: {}
+}
+
+Failure:
+
+{
+success: false,
+message: ""
+}
+
+No raw stack traces.
+
+---
+
+# B7. Logging
+
+Log:
+
+* Authentication failures
+* Financial operations
+* Delivery completion
+* Delivery reversal
+* System jobs
+
+Never log:
+
+* Passwords
+* Tokens
+* Secrets
+
+---
+
+# B8. Database Standards
+
+Every table should have:
+
+* Primary Key
+* Created At
+* Updated At
+
+Indexes must exist for:
+
+* Foreign keys
+* Search fields
+* Frequently filtered columns
+
+---
+
+# B9. Query Standards
+
+Avoid:
+
+* N+1 queries
+* Unnecessary joins
+* Full table scans
+
+Prefer:
+
+* Pagination
+* Select only required fields
+* Indexed filtering
+
+---
+
+# B10. Security
+
+Mandatory:
+
+* JWT validation
+* Role validation
+* Ownership validation
+
+Customer must never access another customer's data.
+
+---
+
+# B11. API Design
+
+APIs must:
+
+* Be RESTful
+* Be predictable
+* Be versioned
+
+Example:
+
+/api/v1/customer/dashboard
+
+---
+
+# B12. Testing Requirements
+
+Every backend feature requires:
+
+* Happy path test
+* Validation test
+* Permission test
+* Edge case test
+* Failure test
+
+Feature is not complete until tested.
+
+==================================================
+FRONTEND QUALITY STANDARDS
+==========================
+
+# F1. Architecture
+
+Page
+→ Components
+→ Services
+→ API
+
+Business logic should not live inside UI components.
+
+---
+
+# F2. API Calls
+
+Never call fetch directly inside components.
+
+Use centralized API service.
+
+Example:
+
+api.get(...)
+api.post(...)
+
+---
+
+# F3. State Management
+
+Use:
+
+* Local state when possible
+* Global state only when necessary
+
+Avoid unnecessary global stores.
+
+---
+
+# F4. UI States
+
+Every screen must support:
+
+1. Loading
+2. Error
+3. Empty
+4. Success
+
+No exceptions.
+
+---
+
+# F5. Forms
+
+Every form must have:
+
+* Client validation
+* Server validation handling
+* Disabled submit during request
+* Error messages
+
+---
+
+# F6. Navigation
+
+Use proper route guards.
+
+Customer pages:
+Customer only
+
+Driver pages:
+Driver only
+
+Admin pages:
+Admin only
+
+---
+
+# F7. Error Handling
+
+Never silently fail.
+
+Show meaningful messages.
+
+Provide retry actions where possible.
+
+---
+
+# F8. Component Design
+
+Components should be:
+
+* Reusable
+* Small
+* Focused
+
+Avoid 500-line components.
+
+---
+
+# F9. Responsiveness
+
+Every screen must work on:
+
+* Mobile
+* Tablet
+* Desktop
+
+Responsiveness is mandatory.
+
+---
+
+# F10. Performance
+
+Avoid:
+
+* Unnecessary re-renders
+* Duplicate API calls
+* Large component trees
+
+Use memoization only when justified.
+
+---
+
+# F11. Security
+
+Never trust UI permissions.
+
+Backend remains source of truth.
+
+Hide sensitive information.
+
+---
+
+# F12. Accessibility
+
+Every interactive element must have:
+
+* Labels
+* Keyboard support
+* Visible focus states
+
+---
+
+# F13. Dashboard Standards
+
+Every dashboard page must provide:
+
+* Loading state
+* Empty state
+* Error state
+* Success state
+
+No blank pages.
+
+---
+
+# F14. Production Readiness Review
+
+Before marking any feature complete:
+
+Review:
+
+* Functionality
+* Error handling
+* Security
+* Scalability
+* Responsiveness
+* Testing
+
+Then classify:
+
+Prototype
+Development Ready
+QA Ready
+Production Ready
+
+---
+
+FINAL RULE
+
+Do not optimize for speed of implementation.
+
+Optimize for:
+
+* Correctness
+* Maintainability
+* Scalability
+* Production readiness
+
+The goal is to build a platform that can support a real business, not a demo application.
