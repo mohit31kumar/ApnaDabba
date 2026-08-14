@@ -17,7 +17,7 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
-    "moduleResolution": "node"
+    "moduleResolution": "bundler"
   },
   "ts-node": {
     "esm": false,
